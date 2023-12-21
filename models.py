@@ -3,7 +3,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Function
-
+from psf_estimators import *
+from fft_conv_pytorch import fft_conv
 
 class BinaryQuantize(Function):
     @staticmethod
@@ -50,6 +51,81 @@ class OpticalLayer(nn.Module):
         x = torch.unsqueeze(x, 1)
         x = x / torch.max(x)
         return x
+    
+class doe_layer(nn.Module):
+    def __init__(self, Nz, Nw, Nx, Ny, Nu, Nv):
+        super(doe_layer, self).__init__()
+        self.heights = 1
+        self.start_w = 400e-9
+        self.end_w = 700e-9
+        self.z_source = 50e-3 
+        self.radii = 0.5e-3 
+        self.focal_lens = 50e-3 
+        self.du = 1e-3
+        self.Ns = 3 
+        self.start_z = 40e-3
+        self.end_z = 65e-3
+        self.Np = np.maximum(Nu, Nv)
+        self.pitch = 1e-3*(1/self.Np)
+        self.shift_y = int(self.Np*1)
+        self.shift_x = int(self.Np*1)
+        self.x_shiftings = np.linspace(-self.shift_x, self.shift_x, Nx)
+        self.wavelengths = np.linspace(self.start_w, self.end_w, Nw)
+        self.distances = np.linspace(self.start_z, self.end_z, Nz)
+        self.y_shiftings = np.linspace(-self.shift_y, self.shift_y, Ny)
+        self.Nf = self.Np*2
+
+        ph = spiral_doe(self.start_w, 
+                        self.end_w, 
+                        self.Ns,
+                        self.Np, 
+                        self.radii, 
+                        self.focal_lens, 
+                        self.du)
+        
+        self.weights = nn.Parameter(torch.from_numpy(ph))
+
+
+        def forward_pass(self, x, R, G, B):
+            propa = calculate_psfs_doe(ph = self.weights.numpy(), 
+                                       x_source = self.x_shiftings,
+                                       y_source= self.y_shiftings, 
+                                       z_source = self.z_source, 
+                                       pitch = self.pitch,
+                                       wavelengths = self.wavelengths,
+                                       distances = self.distances,
+                                       Nf = self.Nf)
+            propa = propa.numpy()
+            a = propa.reshape(Nz, Nw, Ny, Nx, -1)
+            mina = a.min(axis=-1, keepdims=True).reshape(Nz, Nw, Ny, Nx,1, 1)
+            maxa = a.max(axis=-1, keepdims=True).reshape(Nz, Nw, Ny, Nx,1, 1)
+
+            propa = (propa - mina)/(maxa - mina)
+
+            # -----------
+            psfs = propa[0, :, 0, 0, :, :] 
+            psfs_tensor = np.expand_dims(psfs, axis=1)
+            psfs_tensor = torch.from_numpy(psfs_tensor)
+
+            y = torch.zeros(x.shape)
+            for i in range(x.shape[0]):
+                y[i, 0, :, :] = fft_conv(x[i].unsqueeze(0), psfs_tensor[i].unsqueeze(0), padding='same')
+
+            R_channel = torch.zeros((512, 512))
+            G_channel = torch.zeros((512, 512))
+            B_channel = torch.zeros((512, 512))
+
+            for i in range(31):
+                R_channel += y[i,0,:,:]*R[i]
+                G_channel += y[i,0,:,:]*G[i]
+                B_channel += y[i,0,:,:]*B[i]
+
+            RGB = torch.zeros((512, 512, 3))
+            RGB[:,:,0] = R_channel[:,:]/torch.max(R_channel)
+            RGB[:,:,1] = G_channel[:,:]/torch.max(G_channel)
+            RGB[:,:,2] = B_channel[:,:]/torch.max(B_channel)
+            return RGB
+        
 
 
 class E2E_Unfolding_Base(nn.Module):
