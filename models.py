@@ -55,6 +55,10 @@ class OpticalLayer(nn.Module):
 class doe_layer(nn.Module):
     def __init__(self, Nz, Nw, Nx, Ny, Nu, Nv):
         super(doe_layer, self).__init__()
+        self.Nz = Nz
+        self.Nw = Nw
+        self.Nx = Nx
+        self.Ny = Ny
         self.heights = 1
         self.start_w = 400e-9
         self.end_w = 700e-9
@@ -84,47 +88,52 @@ class doe_layer(nn.Module):
                         self.du)
         
         self.weights = nn.Parameter(torch.from_numpy(ph))
+        self.ph = self.weights.detach().clone().numpy()
+
+    def forward(self, x, R, G, B):
+        out = self.forward_pass(x, R, G, B)
+        return out
 
 
-        def forward_pass(self, x, R, G, B):
-            propa = calculate_psfs_doe(ph = self.weights.numpy(), 
-                                       x_source = self.x_shiftings,
-                                       y_source= self.y_shiftings, 
-                                       z_source = self.z_source, 
-                                       pitch = self.pitch,
-                                       wavelengths = self.wavelengths,
-                                       distances = self.distances,
-                                       Nf = self.Nf)
-            propa = propa.numpy()
-            a = propa.reshape(Nz, Nw, Ny, Nx, -1)
-            mina = a.min(axis=-1, keepdims=True).reshape(Nz, Nw, Ny, Nx,1, 1)
-            maxa = a.max(axis=-1, keepdims=True).reshape(Nz, Nw, Ny, Nx,1, 1)
+    def forward_pass(self, x, R, G, B):
+        propa = calculate_psfs_doe(ph = self.ph, 
+                                    x_source = self.x_shiftings,
+                                    y_source= self.y_shiftings, 
+                                    z_source = self.z_source, 
+                                    pitch = self.pitch,
+                                    wavelengths = self.wavelengths,
+                                    distances = self.distances,
+                                    Nf = self.Nf)
+        propa = propa.numpy()
+        a = propa.reshape(self.Nz, self.Nw, self.Ny, self.Nx, -1)
+        mina = a.min(axis=-1, keepdims=True).reshape(self.Nz, self.Nw, self.Ny, self.Nx,1, 1)
+        maxa = a.max(axis=-1, keepdims=True).reshape(self.Nz, self.Nw, self.Ny, self.Nx,1, 1)
 
-            propa = (propa - mina)/(maxa - mina)
+        propa = (propa - mina)/(maxa - mina)
 
-            # -----------
-            psfs = propa[0, :, 0, 0, :, :] 
-            psfs_tensor = np.expand_dims(psfs, axis=1)
-            psfs_tensor = torch.from_numpy(psfs_tensor)
+        # -----------
+        psfs = propa[0, :, 0, 0, :, :] 
+        psfs_tensor = np.expand_dims(psfs, axis=1)
+        psfs_tensor = torch.from_numpy(psfs_tensor)
 
-            y = torch.zeros(x.shape)
-            for i in range(x.shape[0]):
-                y[i, 0, :, :] = fft_conv(x[i].unsqueeze(0), psfs_tensor[i].unsqueeze(0), padding='same')
+        y = torch.zeros(x.shape)
+        for i in range(x.shape[0]):
+            y[i, 0, :, :] = fft_conv(x[i].unsqueeze(0), psfs_tensor[i].unsqueeze(0), padding='same')
 
-            R_channel = torch.zeros((512, 512))
-            G_channel = torch.zeros((512, 512))
-            B_channel = torch.zeros((512, 512))
+        R_channel = torch.zeros((512, 512))
+        G_channel = torch.zeros((512, 512))
+        B_channel = torch.zeros((512, 512))
 
-            for i in range(31):
-                R_channel += y[i,0,:,:]*R[i]
-                G_channel += y[i,0,:,:]*G[i]
-                B_channel += y[i,0,:,:]*B[i]
+        for i in range(31):
+            R_channel += y[i,0,:,:]*R[i]
+            G_channel += y[i,0,:,:]*G[i]
+            B_channel += y[i,0,:,:]*B[i]
 
-            RGB = torch.zeros((512, 512, 3))
-            RGB[:,:,0] = R_channel[:,:]/torch.max(R_channel)
-            RGB[:,:,1] = G_channel[:,:]/torch.max(G_channel)
-            RGB[:,:,2] = B_channel[:,:]/torch.max(B_channel)
-            return RGB
+        RGB = torch.zeros((512, 512, 3))
+        RGB[:,:,0] = R_channel[:,:]/torch.max(R_channel)
+        RGB[:,:,1] = G_channel[:,:]/torch.max(G_channel)
+        RGB[:,:,2] = B_channel[:,:]/torch.max(B_channel)
+        return RGB
         
 
 
