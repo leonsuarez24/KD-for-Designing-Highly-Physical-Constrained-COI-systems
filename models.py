@@ -79,7 +79,7 @@ class doe_layer(nn.Module):
         self.y_shiftings = np.linspace(-self.shift_y, self.shift_y, Ny)
         self.Nf = self.Np*2
 
-        ph = spiral_doe(self.start_w, 
+        self.ph = spiral_doe(self.start_w, 
                         self.end_w, 
                         self.Ns,
                         self.Np, 
@@ -87,8 +87,7 @@ class doe_layer(nn.Module):
                         self.focal_lens, 
                         self.du)
         
-        self.weights = nn.Parameter(torch.from_numpy(ph))
-        self.ph = self.weights.detach().clone().numpy()
+        self.weights = nn.Parameter(torch.from_numpy(self.ph))
         self.deconv = nn.ConvTranspose2d(1, 1, 31, padding = 255, dilation=1, bias = False)
 
     def forward(self, x, R, G, B):
@@ -97,7 +96,7 @@ class doe_layer(nn.Module):
 
 
     def forward_pass(self, x, R, G, B):
-        propa = calculate_psfs_doe(ph = self.ph, 
+        propa = calculate_psfs_doe(ph = self.weights.detach().clone().numpy(), 
                                     x_source = self.x_shiftings,
                                     y_source= self.y_shiftings, 
                                     z_source = self.z_source, 
