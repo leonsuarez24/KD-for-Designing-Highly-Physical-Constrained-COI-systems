@@ -89,6 +89,7 @@ class doe_layer(nn.Module):
         
         self.weights = nn.Parameter(torch.from_numpy(ph))
         self.ph = self.weights.detach().clone().numpy()
+        self.deconv = nn.ConvTranspose2d(1, 1, 31, padding = 255, dilation=1, bias = False)
 
     def forward(self, x, R, G, B):
         out = self.forward_pass(x, R, G, B)
@@ -117,23 +118,26 @@ class doe_layer(nn.Module):
         psfs_tensor = torch.from_numpy(psfs_tensor)
 
         y = torch.zeros(x.shape)
-        for i in range(x.shape[0]):
-            y[i, 0, :, :] = fft_conv(x[i].unsqueeze(0), psfs_tensor[i].unsqueeze(0), padding='same')
+        for j in range(x.shape[0]):     # Loops in batch size
+            for i in range(x.shape[1]): # Loops in wavelengths
+                y[j, i, :, :] = fft_conv(x[j,i,:,:].unsqueeze(0).unsqueeze(0), psfs_tensor[i,:,:].unsqueeze(0), padding='same')
 
-        R_channel = torch.zeros((512, 512))
-        G_channel = torch.zeros((512, 512))
-        B_channel = torch.zeros((512, 512))
+        for j in range(x.shape[0]):     # Loops in batch size
 
-        for i in range(31):
-            R_channel += y[i,0,:,:]*R[i]
-            G_channel += y[i,0,:,:]*G[i]
-            B_channel += y[i,0,:,:]*B[i]
+            R_channel = torch.zeros((512, 512))
+            G_channel = torch.zeros((512, 512))
+            B_channel = torch.zeros((512, 512))
 
-        RGB = torch.zeros((512, 512, 3))
-        RGB[:,:,0] = R_channel[:,:]/torch.max(R_channel)
-        RGB[:,:,1] = G_channel[:,:]/torch.max(G_channel)
-        RGB[:,:,2] = B_channel[:,:]/torch.max(B_channel)
-        return RGB
+            for i in range(31):         # Loops in wavelengths
+                R_channel += y[j,i,:,:]*R[i]
+                G_channel += y[j,i,:,:]*G[i]
+                B_channel += y[j,i,:,:]*B[i]
+
+            RGB = torch.zeros((x.shape[0], 3, 512, 512))
+            RGB[j,0,:,:] = R_channel[:,:]/torch.max(R_channel)
+            RGB[j,1,:,:] = G_channel[:,:]/torch.max(G_channel)
+            RGB[j,2,:,:] = B_channel[:,:]/torch.max(B_channel)
+            return RGB
         
 
 
