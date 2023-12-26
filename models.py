@@ -19,13 +19,13 @@ class BinaryQuantize(Function):
 
 
 class OpticalLayer(nn.Module):
-    def __init__(self, K, output_dim, input_dim):
+    def __init__(self, K, width, height):
         super(OpticalLayer, self).__init__()
-        self.output_dim = output_dim
-        self.input_dim = input_dim
+        self.width = width
+        self.height = height
         self.K = K
-        ca = torch.normal(0, 1, (self.K, self.output_dim, self.input_dim))
-        self.weights = nn.Parameter(ca / np.sqrt(self.output_dim * self.input_dim))
+        ca = torch.normal(0, 1, (self.K, self.width, self.height))
+        self.weights = nn.Parameter(ca / np.sqrt(self.width * self.height))
 
     def forward(self, x):
         # Downscale to 1 px
@@ -147,12 +147,23 @@ class doe_layer(nn.Module):
 
 
 class E2E_Unfolding_Base(nn.Module):
-    def __init__(self, K, output_dim, input_dim, n_class, n_stages):
+    def __init__(self,                 
+                 K, 
+                 width, 
+                 height, 
+                 channels, 
+                 n_stages, 
+                 doe:bool, 
+                 Nz, Nw, Nx, Ny, Nu, Nv):
         super(E2E_Unfolding_Base, self).__init__()
-        self.optical_layer = OpticalLayer(K, output_dim, input_dim)
+
+        if doe:
+            self.optical_layer = doe_layer(Nz, Nw, Nx, Ny, Nu, Nv)
+        else:
+            self.optical_layer = OpticalLayer(K, width, height)
         self.n_stages = n_stages
         self.proximals = nn.ModuleList(
-            [Proximal_Mapping(channel=n_class).to('cuda')
+            [Proximal_Mapping(channel=channels).to('cuda')
              for _ in range(n_stages)
              ])
         self.alphas = nn.ParameterList(
@@ -189,12 +200,22 @@ class E2E_Unfolding_Base(nn.Module):
 
 
 class E2E_Unfolding_Distill(nn.Module):
-    def __init__(self, K, output_dim, input_dim, n_class, n_stages):
+    def __init__(self, 
+                 K, 
+                 width, 
+                 height, 
+                 channels, 
+                 n_stages, 
+                 doe:bool, 
+                 Nz, Nw, Nx, Ny, Nu, Nv):
         super(E2E_Unfolding_Distill, self).__init__()
-        self.optical_layer = OpticalLayer(K, output_dim, input_dim)
+        if doe:
+            self.optical_layer = doe_layer(Nz, Nw, Nx, Ny, Nu, Nv)
+        else:
+            self.optical_layer = OpticalLayer(K, width, height)
         self.n_stages = n_stages
         self.proximals = nn.ModuleList(
-            [Proximal_Mapping(channel=n_class).to('cuda')
+            [Proximal_Mapping(channel=channels).to('cuda')
              for _ in range(n_stages)
              ])
         self.alphas = nn.ParameterList(
@@ -333,45 +354,4 @@ class Resnet(nn.Module):
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
-        return x
-    
-class E2E_Unfolding_DOE(nn.Module):
-    def __init__(self, Nz, Nw, Nx, Ny, Nu, Nv, n_stages, n_class):
-        super(E2E_Unfolding_DOE, self).__init__()
-        self.optical_layer = doe_layer(Nz, Nw, Nx, Ny, Nu, Nv)
-        self.n_stages = n_stages
-        self.proximals = nn.ModuleList(
-            [Proximal_Mapping(channel=n_class).to('cuda')
-             for _ in range(n_stages)
-             ])
-        self.alphas = nn.ParameterList(
-            [
-                nn.Parameter(torch.ones(1, requires_grad=True) * 0.01)
-                for _ in range(n_stages)]
-        )
-
-        self.rhos = nn.ParameterList(
-            [
-                nn.Parameter(torch.ones(1, requires_grad=True) * 0.01)
-                for _ in range(n_stages)]
-        )
-
-        self.betas = nn.ParameterList(
-            [
-                nn.Parameter(torch.ones(1, requires_grad=True) * 0.01)
-                for _ in range(n_stages)]
-        )
-
-    def forward(self, x):
-        y = self.optical_layer.forward_pass(x)
-        x = self.optical_layer(x)
-        u = torch.zeros_like(x)
-        Xt = [x]
-        for i in range(self.n_stages):
-            # x = x - self.alphas[i]*(self.optical_layer.transpose_pass(self.optical_layer.forward_pass(x)-y) + self.rho[i]*(x-self.proximals[i](x)) )
-            h, _ = self.proximals[i](x + u)
-            x = x - self.alphas[i] * (
-                        self.optical_layer.transpose_pass(self.optical_layer.forward_pass(x) - y) + self.rhos[i] * (
-                            x - h + u))
-            u = u + self.betas[i] * (x - h)
         return x

@@ -158,15 +158,31 @@ def count_parameters(model):
 
 
 def train_base_model_unfolding(k, epochs, save_path, SSIM, PSNR, args):
-    channel, im_size, num_classes, class_names, dst_train, dst_test, testloader, trainloader = get_dataset(
-        args.dataset, args.data_path, batch_size=args.batch_size)
+    if args.doe:
+        """add hyperspectral dataset"""
+    else:
+        channel, im_size, _, _, _, _, testloader, trainloader = get_dataset(
+            args.dataset, args.data_path, batch_size=args.batch_size)
 
     psnr_train = np.zeros(epochs)
     psnr_test = np.zeros(epochs)
     ssim_train = np.zeros(epochs)
     ssim_test = np.zeros(epochs)
 
-    e2e = E2E_Unfolding_Base(k, im_size[0], im_size[1], channel, n_stages=args.n_stages).to(args.device)
+
+    e2e = E2E_Unfolding_Base(k, 
+                             im_size[0], 
+                             im_size[1], 
+                             channel, 
+                             args.n_stages,
+                             args.doe,
+                             args.Nz,
+                             args.Nw, 
+                             args.Nx, 
+                             args.Ny, 
+                             args.Np, 
+                             args.Np).to(args.device)
+
     lr = args.lr_baseline
     # p = count_parameters(e2e)
     # print('Number of parameters: ',p)
