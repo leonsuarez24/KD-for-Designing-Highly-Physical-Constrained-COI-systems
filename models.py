@@ -263,3 +263,68 @@ class Proximal_Mapping(nn.Module):
         x = F.relu(self.conv8(x))
 
         return x, xs
+
+class Resnet_Block(nn.Module):
+    def __init__(self, in_channels, out_channels, downsample = None):
+        super().__init__()
+        self.conv1 = nn.Sequential(
+                        nn.Conv2d(in_channels, 
+                                  out_channels, 
+                                  kernel_size = 3, 
+                                  stride = 1, 
+                                  padding = 1),
+                        nn.BatchNorm2d(out_channels),
+                        nn.ReLU())
+        self.conv2 = nn.Sequential(
+                        nn.Conv2d(out_channels, 
+                                  out_channels,     
+                                  kernel_size = 3, 
+                                  stride = 1, 
+                                  padding = 1),
+                        nn.BatchNorm2d(out_channels))
+        self.relu = nn.ReLU()
+        self.downsample = downsample
+        
+    def forward(self, x):
+            residual = x
+            out = self.conv1(x)
+            out = self.conv2(out)
+            if self.downsample:
+                residual = self.downsample(x)
+            out += residual
+            out = self.relu(out)
+            return out
+
+class Resnet(nn.Module):
+    def __init__(self, block, num_layers):
+        super().__init__()
+        self.inplanes = 3
+        self.layer0 = self._make_layer(block, 10, num_layers[0])
+        self.layer1 = self._make_layer(block, 17, num_layers[1])
+        self.layer2 = self._make_layer(block, 24, num_layers[2])
+        self.layer3 = self._make_layer(block, 31, num_layers[3])
+
+        
+    def _make_layer(self, block, planes, num_layers):
+        downsample = None
+        if self.inplanes != planes:
+            
+            downsample = nn.Sequential(
+                nn.Conv2d(self.inplanes, planes, kernel_size=3, stride=1, padding = 1),
+                nn.BatchNorm2d(planes),
+            )
+        layers = []
+        layers.append(block(self.inplanes, planes, downsample))
+        self.inplanes = planes
+        for i in range(1, num_layers):
+            layers.append(block(self.inplanes, planes))
+
+        return nn.Sequential(*layers)
+    
+    
+    def forward(self, x):
+        x = self.layer0(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        return x
