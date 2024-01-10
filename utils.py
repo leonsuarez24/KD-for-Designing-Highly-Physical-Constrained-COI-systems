@@ -150,39 +150,21 @@ def save_aperture_codes(optical_layer, row, pad, path, name):
     grid = vutils.make_grid(aperture_codes, nrow=row, padding=pad, normalize=True)
     vutils.save_image(grid, f'{path}/{name}.png')
 
-
 # ------------------------------------------------------------------------------------------------------------#
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-
 def train_base_model_unfolding(k, epochs, save_path, SSIM, PSNR, args):
-    if args.doe:
-        """add hyperspectral dataset"""
-    else:
-        channel, im_size, _, _, _, _, testloader, trainloader = get_dataset(
-            args.dataset, args.data_path, batch_size=args.batch_size)
+    channel, im_size, num_classes, class_names, dst_train, dst_test, testloader, trainloader = get_dataset(
+        args.dataset, args.data_path, batch_size=args.batch_size)
 
     psnr_train = np.zeros(epochs)
     psnr_test = np.zeros(epochs)
     ssim_train = np.zeros(epochs)
     ssim_test = np.zeros(epochs)
 
-
-    e2e = E2E_Unfolding_Base(k, 
-                             im_size[0], 
-                             im_size[1], 
-                             channel, 
-                             args.n_stages,
-                             args.doe,
-                             args.Nz,
-                             args.Nw, 
-                             args.Nx, 
-                             args.Ny, 
-                             args.Np, 
-                             args.Np).to(args.device)
-
+    e2e = E2E_Unfolding_Base(k, im_size[0], im_size[1], channel, n_stages=args.n_stages, binary=args.binary).to(args.device)
     lr = args.lr_baseline
     # p = count_parameters(e2e)
     # print('Number of parameters: ',p)
@@ -205,12 +187,9 @@ def train_base_model_unfolding(k, epochs, save_path, SSIM, PSNR, args):
         ssim_train[i] = train_ssim
         torch.save(e2e.state_dict(),
                    f'{model_path}/{i + 1}_lr_{lr}_k_{k}_{np.round(train_psnr, 2)}_{np.round(test_psnr, 2)}.pth')
-    # optical_layer, row, pad, path, name
+
     save_aperture_codes(e2e.optical_layer, 32, 2, images_path, 'x')
     save_npy_metric(psnr_train, f'{metrics_path}/psnr_train')
     save_npy_metric(psnr_test, f'{metrics_path}/psnr_test')
     save_npy_metric(ssim_train, f'{metrics_path}/ssim_train')
     save_npy_metric(ssim_test, f'{metrics_path}/ssim_test')
-
-
-
