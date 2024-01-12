@@ -95,9 +95,9 @@ class E2E_Unfolding_Base(nn.Module):
 
 
 class E2E_Unfolding_Distill(nn.Module):
-    def __init__(self, K, output_dim, input_dim, n_class, n_stages):
+    def __init__(self, K, output_dim, input_dim, n_class, n_stages, binary: bool):
         super(E2E_Unfolding_Distill, self).__init__()
-        self.optical_layer = OpticalLayer(K, output_dim, input_dim)
+        self.optical_layer = OpticalLayer(K, output_dim, input_dim, binary)
         self.n_stages = n_stages
         self.proximals = nn.ModuleList(
             [Proximal_Mapping(channel=n_class).to('cuda')

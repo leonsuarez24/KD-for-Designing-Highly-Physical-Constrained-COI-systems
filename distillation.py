@@ -8,7 +8,7 @@ from torchsummary import summary
 
 
 def main(args):
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
     student_loss = np.zeros(args.epochs_distill)
 
@@ -25,12 +25,12 @@ def main(args):
     channel, im_size, _, _, _, _, testloader, trainloader = get_dataset(
         args.dataset, args.data_path, batch_size=args.batch_size)
 
-    student = E2E_Unfolding_Distill(args.k_student, im_size[0], im_size[1], channel, n_stages=args.stages).to(
+    student = E2E_Unfolding_Distill(args.k_student, im_size[0], im_size[1], channel, n_stages=args.stages, binary=args.binary_student).to(
         args.device)
-    teacher = E2E_Unfolding_Distill(args.k_teacher, im_size[0], im_size[1], channel, n_stages=args.stages).to(
+    teacher = E2E_Unfolding_Distill(args.k_teacher, im_size[0], im_size[1], channel, n_stages=args.stages, binary=args.binary_teacher).to(
         args.device)
 
-    teacher.load_state_dict(torch.load('TEACHERS/TEACHER_819_7/model/50_lr_0.001_k_819_39.21_39.93.pth'))
+    teacher.load_state_dict(torch.load('teacher_real_valued_819_7/model/50_lr_0.0001_k_819_50.73_50.87.pth'))
     teacher.to(args.device)
 
     for param in list(teacher.parameters()):
@@ -163,6 +163,8 @@ if __name__ == '__main__':
     parser.add_argument('--gamma', type=float, default='0.000001')
     parser.add_argument('--save_path', type=str, default='./Unrolling_distillation')
     parser.add_argument('--sparse', type=bool, default=True)
+    parser.add_argument('--binary_teacher', type=bool, default=False)
+    parser.add_argument('--binary_student', type=bool, default=True)
     args = parser.parse_args()
     print(args)
     main(args)
