@@ -22,7 +22,7 @@ def matrix_combinatorial(A, gamma):
     return matrix_comb
 
 
-def get_dataset(dataset, data_path='./data', batch_size=128):
+def get_dataset(dataset, data_path, batch_size):
     if dataset == 'MNIST':
         channel = 1
         im_size = (32, 32)

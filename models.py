@@ -17,19 +17,20 @@ class BinaryQuantize(Function):
 
 
 class OpticalLayer(nn.Module):
-    def __init__(self, K, output_dim, input_dim, binary=True):
+    def __init__(self, K, width, height, binary=True, snr:int =15):
         super(OpticalLayer, self).__init__()
-        self.output_dim = output_dim
-        self.input_dim = input_dim
+        self.width = width
+        self.height = height
         self.binary = binary
         self.K = K
-        ca = torch.normal(0, 1, (self.K, self.output_dim, self.input_dim))
-        self.weights = nn.Parameter(ca / np.sqrt(self.output_dim * self.input_dim))
+        ca = torch.normal(0, 1, (self.K, self.width, self.height))
+        self.weights = nn.Parameter(ca / np.sqrt(self.width * self.height))
+        self.snr = snr
 
     def forward(self, x):
-        # Downscale to 1 px
-        y = self.forward_pass(x)
-        # Upscale to 28x28
+        y = self.forward_pass(x) 
+        w = self.noise(y)
+        y = y + w
         x = self.transpose_pass(y)
         return x
 
@@ -51,14 +52,20 @@ class OpticalLayer(nn.Module):
         x = torch.unsqueeze(x, 1)
         x = x / torch.max(x)
         return x
+    
+    def noise(self, y):
+        sigma = torch.sum(torch.pow(y, 2)) / (y.shape[0] * y.shape[1]) * 10 ** (self.snr / 10)
+        noise = torch.normal(mean=0, std=torch.sqrt(sigma).item(), size=y.shape)
+        noise = noise.to(y.device)
+        return noise
 
 class E2E_Unfolding_Base(nn.Module):
-    def __init__(self, K, output_dim, input_dim, n_class, n_stages, binary: bool):
+    def __init__(self, K, width, height, channels, n_stages, binary: bool):
         super(E2E_Unfolding_Base, self).__init__()
-        self.optical_layer = OpticalLayer(K, output_dim, input_dim, binary)
+        self.optical_layer = OpticalLayer(K, width, height, binary)
         self.n_stages = n_stages
         self.proximals = nn.ModuleList(
-            [Proximal_Mapping(channel=n_class).to('cuda')
+            [Proximal_Mapping(channel=channels).to('cuda')
              for _ in range(n_stages)
              ])
         self.alphas = nn.ParameterList(
@@ -95,12 +102,12 @@ class E2E_Unfolding_Base(nn.Module):
 
 
 class E2E_Unfolding_Distill(nn.Module):
-    def __init__(self, K, output_dim, input_dim, n_class, n_stages, binary: bool):
+    def __init__(self, K, width, height, channels, n_stages, binary: bool):
         super(E2E_Unfolding_Distill, self).__init__()
-        self.optical_layer = OpticalLayer(K, output_dim, input_dim, binary)
+        self.optical_layer = OpticalLayer(K, width, height, binary)
         self.n_stages = n_stages
         self.proximals = nn.ModuleList(
-            [Proximal_Mapping(channel=n_class).to('cuda')
+            [Proximal_Mapping(channel=channels).to('cuda')
              for _ in range(n_stages)
              ])
         self.alphas = nn.ParameterList(
