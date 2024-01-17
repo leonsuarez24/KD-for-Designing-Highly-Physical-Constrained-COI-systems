@@ -46,7 +46,8 @@ class OpticalLayer(nn.Module):
 
     def transpose_pass(self, y):
         ca_w = torch.unsqueeze(self.weights, 0)
-        ca_w = BinaryQuantize.apply(ca_w)
+        if self.binary:
+            ca_w = BinaryQuantize.apply(ca_w)
         x = torch.mul(y, ca_w)
         x = torch.sum(x, dim=1)
         x = torch.unsqueeze(x, 1)
