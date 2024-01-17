@@ -17,7 +17,7 @@ class BinaryQuantize(Function):
 
 
 class OpticalLayer(nn.Module):
-    def __init__(self, K, width, height, binary=True, snr:int =15):
+    def __init__(self, K, width, height, binary=True, snr:int = 20):
         super(OpticalLayer, self).__init__()
         self.width = width
         self.height = height
@@ -55,15 +55,15 @@ class OpticalLayer(nn.Module):
         return x
     
     def noise(self, y):
-        sigma = torch.sum(torch.pow(y, 2)) / (y.shape[0] * y.shape[1]) * 10 ** (self.snr / 10)
+        sigma = torch.sum(torch.pow(y, 2)) / ((y.shape[0] * y.shape[1]) * 10 ** (self.snr / 10))
         noise = torch.normal(mean=0, std=torch.sqrt(sigma).item(), size=y.shape)
         noise = noise.to(y.device)
         return noise
 
 class E2E_Unfolding_Base(nn.Module):
-    def __init__(self, K, width, height, channels, n_stages, binary: bool):
+    def __init__(self, K, width, height, channels, n_stages, binary: bool, snr:int):
         super(E2E_Unfolding_Base, self).__init__()
-        self.optical_layer = OpticalLayer(K, width, height, binary)
+        self.optical_layer = OpticalLayer(K, width, height, binary, snr)
         self.n_stages = n_stages
         self.proximals = nn.ModuleList(
             [Proximal_Mapping(channel=channels).to('cuda')

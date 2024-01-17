@@ -164,7 +164,7 @@ def train_base_model_unfolding(k, epochs, save_path, SSIM, PSNR, args):
     ssim_train = np.zeros(epochs)
     ssim_test = np.zeros(epochs)
 
-    e2e = E2E_Unfolding_Base(k, im_size[0], im_size[1], channel, n_stages=args.n_stages, binary=args.binary).to(args.device)
+    e2e = E2E_Unfolding_Base(k, im_size[0], im_size[1], channel, n_stages=args.n_stages, binary=args.binary, snr=args.snr).to(args.device)
     lr = args.lr_baseline
     # p = count_parameters(e2e)
     # print('Number of parameters: ',p)

@@ -15,7 +15,8 @@ def main(args):
     PSNR = PeakSignalNoiseRatio(data_range=1.0).to(args.device)
     if args.binary:
         args.baseline_model_path = args.baseline_model_path+'_'+'binary'
-    args.baseline_model_path = args.baseline_model_path+'_real_valued_'+str(args.k_small)+'_'+str(args.n_stages)
+    else:
+        args.baseline_model_path = args.baseline_model_path+'_real_valued_'+str(args.k_small)+'_'+str(args.n_stages)+'_'+str(args.snr) + 'dB'
     train_base_model_unfolding(args.k_small, args.epoch_baseline, args.baseline_model_path, SSIM, PSNR, args)
 
 
@@ -30,7 +31,8 @@ if __name__ == '__main__':
     parser.add_argument('--baseline_model_path', type=str, default='./teacher')
     parser.add_argument('--device', type=str, default='cuda')
     parser.add_argument('--n_stages', type=int, default=7)
-    parser.add_argument('--binary', type=bool, default=False)
+    parser.add_argument('--binary', type=bool, default=True)
+    parser.add_argument('--snr', type=int, default=20)
     args = parser.parse_args()
     print(args)
     main(args)
