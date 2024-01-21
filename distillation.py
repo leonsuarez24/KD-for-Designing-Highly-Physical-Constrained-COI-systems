@@ -25,10 +25,10 @@ def main(args):
     channel, im_size, _, _, _, _, testloader, trainloader = get_dataset(
         args.dataset, args.data_path, batch_size=args.batch_size)
 
-    student = E2E_Unfolding_Distill(args.k_student, im_size[0], im_size[1], channel, n_stages=args.stages, binary=args.binary_student).to(
-        args.device)
-    teacher = E2E_Unfolding_Distill(args.k_teacher, im_size[0], im_size[1], channel, n_stages=args.stages, binary=args.binary_teacher).to(
-        args.device)
+    student = E2E_Unfolding_Distill(args.k_student, im_size[0], im_size[1], channel, n_stages=args.stages, binary=args.binary_student, 
+                                    is_noise=args.is_noise,snr=args.snr).to(args.device)
+    teacher = E2E_Unfolding_Distill(args.k_teacher, im_size[0], im_size[1], channel, n_stages=args.stages, binary=args.binary_teacher,
+                                    is_noise=args.is_noise, snr=args.snr).to(args.device)
 
     teacher.load_state_dict(torch.load('teacher_real_valued_819_7/model/50_lr_0.0001_k_819_50.73_50.87.pth'))
     teacher.to(args.device)
@@ -165,6 +165,9 @@ if __name__ == '__main__':
     parser.add_argument('--sparse', type=bool, default=True)
     parser.add_argument('--binary_teacher', type=bool, default=False)
     parser.add_argument('--binary_student', type=bool, default=True)
+    parser.add_argument('--is_noise', type=bool, default=False)
+    parser.add_argument('--snr', type=int, default=20)
+
     args = parser.parse_args()
     print(args)
     main(args)
