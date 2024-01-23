@@ -17,7 +17,7 @@ class BinaryQuantize(Function):
 
 
 class OpticalLayer(nn.Module):
-    def __init__(self, K, width, height, binary=True, is_noise=False, snr:int = 20):
+    def __init__(self, K, width, height, binary:bool, is_noise:bool, snr:int):
         super(OpticalLayer, self).__init__()
         self.width = width
         self.height = height
