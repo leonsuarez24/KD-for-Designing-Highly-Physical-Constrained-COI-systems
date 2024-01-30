@@ -37,7 +37,7 @@ def main(args):
 
     mse_loss = nn.MSELoss()
     args.save_path = args.save_path + '_' + str(args.k_student) + '_stages_' + str(
-        args.stages) + '_k_student_' + str(args.k_student)
+        args.stages) + '_k_student_' + str(args.k_student) + '_snr_' + str(args.snr) + '_dB_'
     
     writer, _, _, metrics_path = save_metrics(f'{args.save_path}')
 
@@ -70,6 +70,7 @@ def main(args):
     results['psnr_test'] = test_psnr.avg
     results['ssim_test'] = test_ssim.avg
     results['mse_test'] = loss.item()
+    print(results)
 
     # SAVE METRICS
     save_npy_metric(results, f'{metrics_path}/results')
@@ -83,15 +84,13 @@ if __name__ == '__main__':
     parser.add_argument('--k_student', type=int, default=int(32 * 32 * 0.5))
     parser.add_argument('--device', type=str, default='cuda')
     parser.add_argument('--stages', type=int, default=7)
-    parser.add_argument('--save_path', type=str, default='./noise_test')
+    parser.add_argument('--save_path', type=str, default='./noise_test_BASE')
     parser.add_argument('--sparse', type=bool, default=True)
     parser.add_argument('--binary_student', type=bool, default=True)
     parser.add_argument('--is_noise', type=bool, default=True)
-    parser.add_argument('--snr', type=int, default=40)
-    parser.add_argument('--student_weights_path', type=str, default='./EXP_TEACHER_K_819/SPARSE_EXP_1_DISTILLATION_OK/4_Unrolling_distillation_sparse_512_gamma_1e-06_stages_7_k_teacher_819/model/student_38.78819429321289.pth')
+    parser.add_argument('--snr', type=int, default=5)
+    parser.add_argument('--student_weights_path', type=str, default='2_baseline_binary_512_7_20_dB/model/43_lr_0.001_k_512_36.58_38.29.pth')
 
     args = parser.parse_args()
     print(args)
     main(args)
-
-

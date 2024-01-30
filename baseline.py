@@ -38,6 +38,7 @@ if __name__ == '__main__':
     parser.add_argument('--n_stages', type=int, default=7)
     parser.add_argument('--binary', type=bool, default=True)
     parser.add_argument('--is_noise', type=bool, default=False)
+    parser.add_argument('--trainable_ca', type=bool, default=True)
     parser.add_argument('--snr', type=int, default=20)
     args = parser.parse_args()
     print(args)

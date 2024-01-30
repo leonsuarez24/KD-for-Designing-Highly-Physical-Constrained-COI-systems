@@ -156,7 +156,7 @@ def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 def train_base_model_unfolding(k, epochs, save_path, SSIM, PSNR, args):
-    channel, im_size, num_classes, class_names, dst_train, dst_test, testloader, trainloader = get_dataset(
+    channel, im_size, _, _, _, _, testloader, trainloader = get_dataset(
         args.dataset, args.data_path, batch_size=args.batch_size)
 
     psnr_train = np.zeros(epochs)
@@ -164,7 +164,7 @@ def train_base_model_unfolding(k, epochs, save_path, SSIM, PSNR, args):
     ssim_train = np.zeros(epochs)
     ssim_test = np.zeros(epochs)
 
-    e2e = E2E_Unfolding_Base(k, im_size[0], im_size[1], channel, n_stages=args.n_stages, binary=args.binary, is_noise=args.is_noise, snr=args.snr).to(args.device)
+    e2e = E2E_Unfolding_Base(k, im_size[0], im_size[1], channel, n_stages=args.n_stages, binary=args.binary, is_noise=args.is_noise, snr=args.snr, trainable_ca=args.trainable_ca).to(args.device)
     lr = args.lr_baseline
     # p = count_parameters(e2e)
     # print('Number of parameters: ',p)

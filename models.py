@@ -17,7 +17,7 @@ class BinaryQuantize(Function):
 
 
 class OpticalLayer(nn.Module):
-    def __init__(self, K, width, height, binary:bool, is_noise:bool, snr:int):
+    def __init__(self, K, width, height, binary:bool, is_noise:bool, snr:int, trainable_ca:bool):
         super(OpticalLayer, self).__init__()
         self.width = width
         self.height = height
@@ -25,7 +25,10 @@ class OpticalLayer(nn.Module):
         self.is_noise = is_noise
         self.K = K
         ca = torch.normal(0, 1, (self.K, self.width, self.height))
-        self.weights = nn.Parameter(ca / np.sqrt(self.width * self.height))
+        if trainable_ca:
+            self.weights = nn.Parameter(ca / np.sqrt(self.width * self.height))
+        else:
+            self.weights = ca / np.sqrt(self.width * self.height)
         self.snr = snr
 
     def forward(self, x):
@@ -63,9 +66,9 @@ class OpticalLayer(nn.Module):
         return noise
 
 class E2E_Unfolding_Base(nn.Module):
-    def __init__(self, K, width, height, channels, n_stages, binary: bool, is_noise: bool, snr:int):
+    def __init__(self, K, width, height, channels, n_stages, binary: bool, is_noise: bool, snr:int, trainable_ca:bool):
         super(E2E_Unfolding_Base, self).__init__()
-        self.optical_layer = OpticalLayer(K, width, height, binary, is_noise, snr)
+        self.optical_layer = OpticalLayer(K, width, height, binary, is_noise, snr, trainable_ca)
         self.n_stages = n_stages
         self.proximals = nn.ModuleList(
             [Proximal_Mapping(channel=channels).to('cuda')
@@ -105,9 +108,9 @@ class E2E_Unfolding_Base(nn.Module):
 
 
 class E2E_Unfolding_Distill(nn.Module):
-    def __init__(self, K, width, height, channels, n_stages, binary: bool, is_noise: bool, snr:int):
+    def __init__(self, K, width, height, channels, n_stages, binary: bool, is_noise: bool, snr:int, trainable_ca:bool):
         super(E2E_Unfolding_Distill, self).__init__()
-        self.optical_layer = OpticalLayer(K, width, height, binary, is_noise, snr)
+        self.optical_layer = OpticalLayer(K, width, height, binary, is_noise, snr, trainable_ca)
         self.n_stages = n_stages
         self.proximals = nn.ModuleList(
             [Proximal_Mapping(channel=channels).to('cuda')
