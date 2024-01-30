@@ -40,7 +40,7 @@ class OpticalLayer(nn.Module):
         return x
 
     def forward_pass(self, x):
-        ca_w = torch.unsqueeze(self.weights, 0)
+        ca_w = torch.unsqueeze(self.weights, 0).to(x.device)
         if self.binary:
             ca_w = BinaryQuantize.apply(ca_w)
         x = torch.mul(x, ca_w)
@@ -50,7 +50,7 @@ class OpticalLayer(nn.Module):
         return x
 
     def transpose_pass(self, y):
-        ca_w = torch.unsqueeze(self.weights, 0)
+        ca_w = torch.unsqueeze(self.weights, 0).to(y.device)
         if self.binary:
             ca_w = BinaryQuantize.apply(ca_w)
         x = torch.mul(y, ca_w)
